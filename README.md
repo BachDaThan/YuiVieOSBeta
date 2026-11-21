@@ -127,36 +127,36 @@ task trong [`docs/PLAN.md`](docs/PLAN.md).
 | 0 | Trợ lý phần cứng `yui-hw` (P6.31): quét PCI/USB/IOMMU/VT-x/EPT/firmware/ổ đĩa ⇒ hạng A/B/C/D **dự kiến** theo quy tắc + hạng **đã đo** chỉ từ bảng `docs/hwdb.tsv` (`real`/`qemu` có bằng chứng); báo cáo chỉ ghi ra tệp cục bộ | 🟡 kiểm thử trên cây sysfs giả + 31 mô tả tổng hợp; **chưa chạy trên máy thật nào** — không có con số "% phần cứng được hỗ trợ" | `kernel-services/hw.cpp`, `tools/hw`, `tests/test_hw.cpp` (290 check) |
 | 0 | Luồng khởi động 3 kiến trúc + linker script | ✅ build 3/3, boot 2/3 | `arch/{x86_64,arm64,riscv64}/linker.ld` |
 | 0 | Khung nhân bare-metal: serial, bộ cấp phát, `YuiBootInfo`, profiler, bảng năng lực trên ring 0 | ✅ boot thật (aarch64, riscv64) / 🔄 x86_64 đã sửa boot path (multiboot2 + ELF32 objcopy), đợi CI xác nhận | `kernel-frame/`; CI `qemu` bắt buộc 3 kiến trúc |
-| 0 | Màn hình chào trên framebuffer tuyến tính (font 5×7) + **chữ Việt có dấu** | ✅ kiểm thử | `userspace-vi/fb.cpp` (1184 check, `fb_viet.*` 29 check), `tools/splash`, [`docs/splash.png`](docs/splash.png) |
+| 0 | Màn hình chào trên framebuffer tuyến tính (font 5×7) + **chữ Việt có dấu** | ✅ kiểm thử | `userspace-vi/fb.cpp`, `tests/test_fb.cpp` (1184 check, gồm chữ Việt có dấu), `tools/splash`, [`docs/splash.png`](docs/splash.png) |
 | 0 | Chọn chế độ hiển thị gốc (EDID) + hệ số phóng nguyên HiDPI 1–4 theo DPI thật + viền đen thay vì kéo giãn; thẻ framebuffer Multiboot2 + nút simple-framebuffer Device Tree trong nhân (P2.16) | 🟡 logic C++ + Rust có test; splash qua GRUB/VBE (x86_64) và Device Tree (aarch64 + riscv64, có 4K) xanh trên CI; GOP chờ P6.4 | `userspace-vi/display.cpp`, `kernel-cap/src/display.rs`, `kernel-cap/src/fdt.rs`, `tests/test_display.cpp` (2113 check, 34 bảng EDID + 48 DTB), `scripts/qemu-splash.sh`, `scripts/qemu-splash-dt.sh` |
 | 1 | Bảng năng lực: 16 quyền (kể cả `compute.heavy`), dẫn xuất chỉ thu hẹp, thu hồi bắc cầu | ✅ Rust | `kernel-cap/src/lib.rs` |
 | 1 | Thẻ năng lực ký HMAC-SHA-256, xác minh hằng thời gian, lỗi có kiểu | ✅ hai phía | `kernel-cap/src/lib.rs`, `vmm-sandbox/sandbox.cpp` |
 | 1 | SHA-256 / HMAC / SHAKE-256 / scrypt tự viết, có vector RFC | ✅ | `kernel-services/crypto.cpp`, `tests/test_crypto.cpp` |
-| 1 | Sovereign Keyring + `.bundle` ký Ed25519 (clean-room, vector RFC 8032) | ✅ hai phía | `kernel-services/ed25519.cpp` + `kernel-cap/src/{sha512,ed25519,keyring,bundle}.rs`, `tests/test_ed25519.cpp` (78 check) |
+| 1 | Sovereign Keyring + `.bundle` ký Ed25519 (clean-room, vector RFC 8032) | ✅ hai phía | `kernel-services/ed25519.cpp` + `kernel-cap/src/{sha512,ed25519,keyring,bundle}.rs`, `tests/test_ed25519.cpp` (132 check) |
 | 2 | Guard đào coin ngầm (70 %/15 s ⇒ hạ Idle + bóp xung + hỏi người dùng) | ✅ kiểm thử | `kernel-services/guard.cpp`, `yuid` `guard.*`, `tests/test_redteam.cpp` |
 | 2 | Bộ lọc egress theo năng lực (mặc định chặn, allowlist policies/*.json) | ✅ kiểm thử | `vmm-sandbox/sandbox.cpp::EgressFilter`, `tests/test_redteam.cpp` |
-| 2 | Lập lịch chuyển đổi nóng LAVD (P/E-core, tín dụng đánh thức, công bằng) | ✅ Rust | `kernel-services/yui-sched` (9 test) |
-| 2 | ZRAM: codec YUI-LZ + kho trang nén, fallback verbatim | ✅ Rust + C++ | `kernel-services/yui-zram` (8 test), `kernel-services/codec.cpp` |
-| 2 | `yui-frame` (khung unsafe duy nhất) | ✅ boot được (2 kiến trúc) | `kernel-frame/` — 36 khối `unsafe` trong 7 tệp được `verify.sh` kiểm toán |
+| 2 | Lập lịch chuyển đổi nóng LAVD (P/E-core, tín dụng đánh thức, công bằng) | ✅ Rust | `kernel-services/yui-sched` (`cargo test` trên CI) |
+| 2 | ZRAM: codec YUI-LZ + kho trang nén, fallback verbatim | ✅ Rust + C++ | `kernel-services/yui-zram` (`cargo test` trên CI), `kernel-services/codec.cpp` |
+| 2 | `yui-frame` (khung unsafe duy nhất) | ✅ boot được (2 kiến trúc) | `kernel-frame/` — 30 khối `unsafe {}` + 5 `unsafe fn` + 2 `unsafe impl`, nằm trong 8 tệp được `verify.sh` kiểm toán |
 | 2 | Tickless, DVFS, FS bất biến, Linux ABI | 🟡 chính sách + fsstore/ABI model có test; kernel integration và QEMU/hardware QA còn thiếu | P2.5, P2.7–P2.9 |
-| 3 | Hộp cát 3 bậc + audit + 4 policy mẫu có test | ✅ | `vmm-sandbox/` (129 check) |
+| 3 | Hộp cát 3 bậc + audit + 4 policy mẫu có test | ✅ | `vmm-sandbox/`, `tests/test_sandbox.cpp` (340 check) |
 | 3 | Manifest micro-VM (JSON Schema) | 🟡 đặc tả | `vmm-sandbox/vmm/` |
 | 3 | VMM thật (KVM), Wine/VKD3D, Waydroid-lite | ❌ chưa có | P3 |
-| 4 | `yuid`: socket `/run/yuid.sock`, JSON-RPC 2.0 | ✅ chạy | `ai-bridge-yuid/daemon/` (102 check) |
-| 4 | C-ABI `libyui.so/.a` + header C, kiểm từ **C11** | ✅ chạy | `include/yui/yui.h`, `tests/test_capi.c` (61 check) |
+| 4 | `yuid`: socket `/run/yuid.sock`, JSON-RPC 2.0 | ✅ chạy | `ai-bridge-yuid/daemon/`, `tests/test_daemon.cpp` (1260 check) |
+| 4 | C-ABI `libyui.so/.a` + header C, kiểm từ **C11** | ✅ chạy | `include/yui/yui.h`, `tests/test_capi.c` (66 check) |
 | 4 | MCP `2024-11-05`, 8 công cụ dữ liệu | ✅ chạy | `ai-bridge-yuid/daemon/server.cpp` |
-| 4 | Telemetry Hook: `telemetry.read` + `yui_telemetry()` đọc pin/nhiệt/RAM thật, tự chỉnh k/W | ✅ chạy | `kernel-services/telemetry.cpp` (471 check), `tests/test_capi.c` |
+| 4 | Telemetry Hook: `telemetry.read` + `yui_telemetry()` đọc pin/nhiệt/RAM thật, tự chỉnh k/W | ✅ chạy | `kernel-services/telemetry.cpp`, `tests/test_telemetry.cpp` (567 check); C-ABI `yui_telemetry()` do `test_capi` kiểm |
 | 4 | 5 công cụ OS MCP `sys_power`/`sys_scheduler`/`sys_app_stripper`/`sys_proc`/`sys_search_vault` + xác nhận | ✅ chạy (P4.3 `[x]`) | `ai-bridge-yuid/daemon/`, P4.3 |
 | 4 | Cài đặt tham chiếu graph/vault/engine (**sẽ thay ở P5**) | 🟡 tạm | `ai-bridge-yuid/reference/` |
-| 5 | Smart App Stripper: strip ELF, khử trùng lặp, lọc locale, chống zip-slip | ✅ chạy | `pkg-stripper/apppack.cpp`, `tools/trim` (61 check) |
+| 5 | Smart App Stripper: strip ELF, khử trùng lặp, lọc locale, chống zip-slip | ✅ chạy | `pkg-stripper/apppack.cpp`, `tools/trim`, `tests/test_tools.cpp` (414 check, chung cho các công cụ CLI) |
 | 5 | Giải nén an toàn (P4.33): DEFLATE + zstd tự viết, `zip`/`gz`/`zst`/`tar`/`tar.gz`/`tar.zst`, chặn zip-slip/liên kết/bom nén, CRC/XXH64, xoá sạch khi lỗi | ✅ chạy (chưa 7z) | `pkg-stripper/archive.cpp`, `pkg-stripper/zstd.cpp`, `tests/test_archive.cpp` (429 check) |
-| 5 | Bộ gõ Telex **và** VNI, đặt dấu đúng chính tả | ✅ 246 test | `userspace-vi/ime.cpp` |
+| 5 | Bộ gõ Telex **và** VNI, đặt dấu đúng chính tả | ✅ kiểm thử | `userspace-vi/ime.cpp`, `tests/test_ime.cpp` (7149 check) |
 | 5 | Shell song ngữ Việt–Anh, 36 lệnh (gồm `tìmapp`/`cài`/`gỡ` của Kho, `xoá`/`khôiphục`/`dọnrác` của thùng rác) | ✅ chạy | `userspace-vi/shell.cpp` |
 | 5 | Chế độ POSIX trong `yui-shell` (`!lệnh` hoặc `chạy …`): ống dẫn, `>` `>>` `<` `2>&1`, `&`/`jobs`/`kill`/`wait`, biến, trích dẫn; `yuid` kiểm + audit từng lệnh, Landlock + no_new_privs qua `yui-sandbox-exec`; dòng lạ không tự chạy | ✅ chạy trên Linux host (Landlock); nhân riêng chờ P2.7 | `userspace-vi/posix.cpp`, `tools/sandbox-exec/`, `tests/test_posix.cpp` (141 check), P4.12 |
 | 5 | Thùng rác (khôi phục kiểm băm, thùng đầy thì cảnh báo, không tự xoá) + dọn rác chỉ trong danh sách có tên, xoá vĩnh viễn cần xác nhận tin cậy | ✅ chạy trên Linux host; chưa nối snapshot nhân | `userspace-vi/trash.cpp`, `tests/test_trash.cpp` (203 check), P4.17 |
-| 5 | Kho Ứng Dụng — lõi: danh mục ký Ed25519, tải https từ nguồn chính thức, kiểm sha256, gọt cục bộ, hộp cát, biểu tượng; CLI `yui-store` + RPC `store.*` | ✅ chạy, chưa có danh mục thật, chỉ gói `.tar` | `pkg-stripper/store.cpp`, `tests/test_store.cpp` (201 check), P4.15 |
+| 5 | Kho Ứng Dụng — lõi: danh mục ký Ed25519, tải https từ nguồn chính thức, kiểm sha256, gọt cục bộ, hộp cát, biểu tượng; CLI `yui-store` + RPC `store.*` | ✅ chạy, chưa có danh mục thật, chỉ gói `.tar` | `pkg-stripper/store.cpp`, `tests/test_store.cpp` (215 check), P4.15 |
 | 5 | Kế hoạch giao diện thích ứng (Framebuffer ⇄ Vulkan/DRM) | ✅ logic + test | `userspace-vi/ui.cpp` |
-| 5 | IBus Telex/VNI engine | ✅ Người dùng xác minh Ubuntu 24.04: build sạch, `make check` 2831, D-Bus avg 7.16 ms; Firefox/LibreOffice để Desktop QA follow-up | `userspace-vi/ibus/`, P1.4 |
+| 5 | IBus Telex/VNI engine | ✅ Người dùng xác minh Ubuntu 24.04: build sạch, `make check` 2831, D-Bus avg 7.16 ms; Firefox/LibreOffice để Desktop QA follow-up | `userspace-vi/ibus/`, P1.4 <!-- số-đo: người dùng đo trên Ubuntu 24.04, commit a786a44, 2026-11-16 (PLAN P1.4, §12) --> |
 | 5 | Compositor thật (DRM/Vulkan), App Yui build được | ❌ chưa có (đã có bộ vẽ pixel + màn hình chào) | P2.6, P4.1, P4.5 |
 
 ### Phạm vi: những gì dự án không làm và không hứa

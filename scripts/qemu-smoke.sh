@@ -76,11 +76,13 @@ have_all() {
     # nên dòng đó là lỗi, không phải ngoại lệ (xem docs/PLAN.md P2.3).
     # "yui: boot ok" (dòng CUỐI của kmain) cũng bắt buộc: trước đây nhân
     # aarch64 dừng giữa bước [3] (định dạng &str bằng {}) mà smoke vẫn xanh vì
-    # chỉ đòi "Tang 1".
+    # chỉ đòi "Tang 1". "FromBytes : ok" (P2.22): phép ép &[u8] → &T thật
+    # chạy đủ vector trên đích, kể cả aarch64 MMU tắt.
     grep -q "yui: ready" "$LOG" 2>/dev/null &&
         grep -q "Phan loai" "$LOG" 2>/dev/null &&
         grep -q "Tang 1" "$LOG" 2>/dev/null &&
         grep -q "yui: boot ok" "$LOG" 2>/dev/null &&
+        grep -q "FromBytes : ok" "$LOG" 2>/dev/null &&
         ! grep -q "khong doc duoc" "$LOG" 2>/dev/null
 }
 
@@ -88,7 +90,7 @@ deadline=$(( $(date +%s) + TIMEOUT ))
 while [ "$(date +%s)" -lt "$deadline" ]; do
     if have_all; then
         echo "✓ qemu $ARCH: boot được, profiler chạy, bảng năng lực sống"
-        grep -E "Kien truc|RAM|Phan loai|Tu chinh|Tang 1|quyen goc" "$LOG" | sed 's/^/   | /'
+        grep -E "Kien truc|RAM|Phan loai|Tu chinh|Tang 1|quyen goc|FromBytes" "$LOG" | sed 's/^/   | /'
         kill "$PID" 2>/dev/null || true
         exit 0
     fi

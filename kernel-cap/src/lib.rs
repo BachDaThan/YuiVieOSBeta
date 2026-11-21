@@ -24,6 +24,7 @@ pub mod bundle;
 pub mod input;
 pub mod display;
 pub mod fdt;
+pub mod frombytes;
 
 use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};

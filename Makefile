@@ -178,9 +178,12 @@ $(BUILD)/test_capi: tests/test_capi.c $(BIN)/libyui.a
 	$(CC) $(CFLAGS) -Iinclude -o $@ $< $(BIN)/libyui.a -lstdc++ $(LDLIBS)
 
 test: all $(addprefix $(OBJ)/test/,$(TESTS)) $(BUILD)/test_capi   # `all` trước: test_tools gọi build/bin/yui-update (P0.15)
-	@set -e; for t in $(TESTS); do echo "── $$t"; ./$(OBJ)/test/$$t; done
-	@echo "── test_capi (C11)"
-	@./$(BUILD)/test_capi
+	@set -e; L=$(BUILD)/test-logs; rm -rf $$L; mkdir -p $$L; \
+	for t in $(TESTS); do echo "── $$t"; \
+	  ./$(OBJ)/test/$$t > $$L/$$t.log 2>&1 && st=0 || st=$$?; cat $$L/$$t.log; [ $$st -eq 0 ] || exit $$st; \
+	done; \
+	echo "── test_capi (C11)"; \
+	./$(BUILD)/test_capi > $$L/test_capi.log 2>&1 && st=0 || st=$$?; cat $$L/test_capi.log; [ $$st -eq 0 ] || exit $$st
 
 verify:
 	@./scripts/verify.sh
@@ -225,6 +228,8 @@ check: all test verify
 	@python3 tools/mcp_client.py --server ./$(BIN)/yuid > /dev/null
 	@echo "── boundary checker (P7.10)"
 	@python3 scripts/test_check_boundaries.py > /dev/null
+	@echo "── doc-number checker (P0.16)"
+	@python3 scripts/test_check_doc_numbers.py > /dev/null
 	@echo "all checks passed"
 
 install: all

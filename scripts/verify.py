@@ -4,14 +4,19 @@
 Checks, in order:
   1. the monorepo layout the docs promise actually exists;
   2. every shipped sandbox policy and the micro-VM schema parse;
-  3. kernel crates contain no `unsafe`; the single hardware frame
+  3. no Rust source outside `kernel-frame/` contains `unsafe` (the whole repo
+     is scanned, so a new crate cannot slip past); the single hardware frame
      (`kernel-frame/`) is the only place where `unsafe` may appear, and only in
      the files that touch hardware; all Rust sources have balanced brackets;
   4. internal documentation links resolve;
   5. every repository path quoted in the docs exists;
   6. sources are LF-only;
   7. no secrets leak (P7.3) and the "no spoofing / no check evasion" boundary
-     holds (P7.10, scripts/check_boundaries.py).
+     holds (P7.10, scripts/check_boundaries.py);
+  8. numbers quoted in the docs match the code: `unsafe` counted by kind,
+     the P0 check total and README check counts vs. the `make test` logs,
+     no untagged performance numbers in README (P0.16,
+     scripts/check_doc_numbers.py).
 
 Exit code 0 only if everything passes.  Run through scripts/verify.sh.
 """
@@ -86,9 +91,12 @@ REQUIRED_FILES = [
     "include/yui/archive.hpp", "pkg-stripper/archive.cpp", "pkg-stripper/zstd.cpp", "tests/test_archive.cpp",
     "tests/archive_fixtures.hpp", "scripts/gen_archive_fixtures.py",
     "scripts/check_boundaries.py", "scripts/test_check_boundaries.py",
+    "scripts/check_doc_numbers.py", "scripts/test_check_doc_numbers.py",
     "include/yui/display.hpp", "userspace-vi/display.cpp", "tests/test_display.cpp",
     "kernel-cap/src/display.rs", "tests/data/display_vectors.txt", "scripts/gen_display_vectors.py",
     "kernel-cap/src/fdt.rs", "tests/data/fdt_fb_vectors.txt", "scripts/gen_fdt_vectors.py",
+    "kernel-cap/src/frombytes.rs", "kernel-frame/src/frombytes.rs",
+    "tests/data/frombytes_vectors.txt", "scripts/gen_frombytes_vectors.py",
     "scripts/qemu-splash-dt.sh",
     "scripts/qemu-splash.sh", "scripts/check_splash_ppm.py",
 ]
@@ -236,8 +244,6 @@ def strip_rust(src: str) -> str:
 BRACKETS = {"(": ")", "[": "]", "{": "}"}
 
 
-SAFE_CRATES = ("kernel-cap", "kernel-services", "vmm-sandbox", "pkg-stripper")
-
 # Những tệp trong khung phần cứng được phép có `unsafe`, kèm lý do. Bất kỳ tệp
 # nào khác xuất hiện `unsafe` đều là hồi quy.
 FRAME_UNSAFE_FILES = {
@@ -248,6 +254,7 @@ FRAME_UNSAFE_FILES = {
     "boot.rs": "đọc multiboot info / device tree do firmware cấp",
     "allocator.rs": "triển khai GlobalAlloc",
     "splash.rs": "ghi framebuffer tuyến tính do firmware cấp",
+    "frombytes.rs": "ép &[u8] → &T zero-copy sau check của kernel-cap (P2.22, đúng 1 khối)",
     "main.rs": "thuộc tính #[global_allocator] và #![no_main] đặt ở crate root",
 }
 
@@ -274,9 +281,28 @@ def bracket_problems(clean: str) -> list[str]:
     return problems
 
 
+# Thư mục không phải mã nguồn của mình (sản phẩm build, phụ thuộc tải về).
+RUST_SKIP_DIRS = {".git", "target", "build", "node_modules", ".venv", "vendor"}
+
+
+def rust_sources_outside_frame() -> list[pathlib.Path]:
+    """Mọi tệp .rs của repo trừ `kernel-frame/` (P2.22: `unsafe` chỉ ở khung).
+
+    Quét cả repo thay vì danh sách crate cố định, để một crate Rust mới (ví dụ
+    `link-core/`) không lọt khỏi luật chỉ vì chưa ai thêm nó vào danh sách.
+    """
+    out = []
+    for path in ROOT.rglob("*.rs"):
+        parts = path.relative_to(ROOT).parts
+        if parts[0] == "kernel-frame" or RUST_SKIP_DIRS.intersection(parts):
+            continue
+        out.append(path)
+    return sorted(out)
+
+
 def check_rust() -> None:
     header("an toàn Rust (không unsafe, ngoặc cân)")
-    sources = sorted(p for crate in SAFE_CRATES for p in (ROOT / crate).rglob("*.rs"))
+    sources = rust_sources_outside_frame()
     if not sources:
         bad("không tìm thấy tệp .rs nào trong crate nhân")
         return
@@ -367,7 +393,7 @@ def check_frame() -> None:
         return
     required = ["Cargo.toml", "src/main.rs", "src/arch/mod.rs", "src/boot.rs",
                 "src/console.rs", "src/profiler.rs", "src/cap.rs", "src/splash.rs",
-                "src/allocator.rs"]
+                "src/allocator.rs", "src/frombytes.rs"]
     for name in required:
         (ok if (frame / name).is_file() else bad)(f"kernel-frame/{name}")
 
@@ -628,8 +654,8 @@ def check_secrets() -> None:
 
 def check_display_vectors() -> None:
     """P2.16: tệp vector dùng chung C++/Rust phải khớp bản tham chiếu Python."""
-    header("vector chế độ hiển thị + framebuffer device tree (P2.16)")
-    for name in ("gen_display_vectors.py", "gen_fdt_vectors.py"):
+    header("vector chế độ hiển thị + framebuffer device tree (P2.16) + FromBytes (P2.22)")
+    for name in ("gen_display_vectors.py", "gen_fdt_vectors.py", "gen_frombytes_vectors.py"):
         gen = ROOT / "scripts" / name
         res = subprocess.run([sys.executable, str(gen), "--check"], capture_output=True, text=True)
         if res.returncode == 0:
@@ -652,6 +678,20 @@ def check_boundaries() -> None:
         ok(res.stdout.strip())
 
 
+def check_doc_numbers() -> None:
+    """Số liệu trong tài liệu khớp mã (P0.16)."""
+    header("số liệu tài liệu khớp mã (P0.16)")
+    script = ROOT / "scripts/check_doc_numbers.py"
+    if not script.is_file():
+        bad("scripts/check_doc_numbers.py không tồn tại")
+        return
+    res = subprocess.run([sys.executable, str(script)], cwd=str(ROOT), capture_output=True, text=True)
+    if res.returncode != 0:
+        bad(f"số liệu tài liệu lệch mã:\n{(res.stdout + res.stderr).strip()}")
+    else:
+        ok(res.stdout.strip())
+
+
 def main() -> int:
     if not (ROOT / "docs/PLAN.md").exists():
         print("verify.py: chạy từ trong repo YuiVieOS Beta")
@@ -667,6 +707,7 @@ def main() -> int:
     check_third_party()
     check_secrets()
     check_boundaries()
+    check_doc_numbers()
     check_links()
     check_doc_paths()
     check_line_endings()

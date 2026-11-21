@@ -13,6 +13,18 @@ core::arch::global_asm!(
 .global _start
 _start:
     mov x19, x0               /* device tree pointer */
+    /* Bật FP/SIMD cho EL1/EL0 (CPACR_EL1.FPEN = 0b11). Giá trị lúc reset là
+       UNKNOWN; khi FPEN chặn, lệnh NEON đầu tiên (rustc dùng NEON cho vòng
+       lặp được vector hoá, khởi tạo mảng, đếm ký tự trong Formatter::pad)
+       gây trap đồng bộ mà chưa có bảng vector ⇒ nhân treo im lặng. Lần tự
+       kiểm FromBytes (P2.22) treo đúng kiểu đó trên CI (run 44894963668);
+       lỗi cũ "định dạng &str qua Formatter treo nhân" nhiều khả năng cùng
+       gốc. (Không viết dấu ngoặc nhọn trong global_asm: đó là chỗ thế đối số.)
+       Ghi CPACR_EL1 hợp lệ ở EL1, EL2 và EL3. */
+    mrs x1, cpacr_el1
+    orr x1, x1, #(3 << 20)
+    msr cpacr_el1, x1
+    isb
     ldr x1, =__yui_stack_top
     mov sp, x1
     mov x0, x19

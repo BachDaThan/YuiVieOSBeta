@@ -153,6 +153,10 @@ int main(void) {
     CHECK(strlen(reason) > 0);
   }
 
-  printf("\n%s: %d checks, %d failed\n", failures ? "FAILED" : "OK", checks, failures);
+  /* Cùng định dạng dòng tổng với tests/testutil.hpp (scripts/check_doc_numbers.py đọc). */
+  if (failures)
+    printf("\n\342\234\227 test_capi: %d of %d checks FAILED\n", failures, checks);
+  else
+    printf("\n\342\234\223 test_capi: %d checks passed, 0 failed\n", checks);
   return failures ? 1 : 0;
 }
